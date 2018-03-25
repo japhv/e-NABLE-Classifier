@@ -5,9 +5,11 @@
 """
 
 import tensorflow as tf
+import numpy as np
+
+from tensorflow.python.layers import core as layers_core
 from preprocess import getTrainTest
 from load import load_GloVe
-import numpy as np
 
 batch_size = 1
 
@@ -49,6 +51,10 @@ with tf.variable_scope("embedding") as scope:
     decoder_outputs = tf.placeholder(tf.int32, name="decoderOutput")
 
 
+with tf.variable_scope("dense") as denseScope:
+    projection_layer = layers_core.Dense(6400, use_bias=False)
+
+
 # Encoder
 with tf.variable_scope("encoder") as encoderScope:
     # Build RNN cell
@@ -67,7 +73,7 @@ with tf.variable_scope("decoder") as decoderScope:
     helper = tf.contrib.seq2seq.TrainingHelper(decoder_emb_inp, decoder_lengths, time_major=True)
 
     ## Decoder
-    decoder = tf.contrib.seq2seq.BasicDecoder(decoder_cell, helper, encoder_state, output_layer=None)
+    decoder = tf.contrib.seq2seq.BasicDecoder(decoder_cell, helper, encoder_state, output_layer=projection_layer)
 
     ## Dynamic decoding
     outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder, impute_finished=True, maximum_iterations=9)
@@ -108,7 +114,7 @@ with tf.Session() as sess:
                 decoder_inputs: decInp,
                 decoder_lengths: declen,
                 decoder_outputs: decInp,
-                target_weights: np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+                target_weights: np.random.rand(1, 8)
             }
             currentLoss = sess.run(train_loss,feed_dict=feed_dict)
             print(row["content"][:30], " - Loss:",currentLoss)
