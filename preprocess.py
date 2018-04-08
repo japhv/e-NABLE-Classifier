@@ -39,8 +39,8 @@ def loadData():
 
 
 def __rowToVec(row):
-    outputVector = ([row["Report"]], [row["Device"]], [row["Delivery"]], [row["Progress"]], [row["becoming_member"]],
-                    [row["attempt_action"]], [row["Activity"]], [row["Other"]])
+    outputVector = [[[row["Report"], row["Device"], row["Delivery"], row["Progress"], row["becoming_member"],
+                    row["attempt_action"], row["Activity"], row["Other"]]]]
     return outputVector
 
 
@@ -54,8 +54,8 @@ def getTrainTest():
     nlp = spacy.load('en')
     max_encoder_time = 500
     df["y_term"] = df.apply(__rowToVec, axis=1).apply(np.array)
-
-    df["x_term"] = df["content"].apply(lambda c: [token.text.lower() for token in nlp(c)][:500])
+    print("Decoder shape:", df["y_term"][0].shape)
+    df["x_term"] = df["content"].apply(lambda c: [token.text.lower() for token in nlp(c)][:max_encoder_time])
     # df = df[df["x_term"].map(len) < 1000] # Remove vectors which have higher dimentions
     df["x_term"].apply(lambda c: pad(c, max_encoder_time))
 
@@ -69,4 +69,5 @@ def getTrainTest():
 def pad(c, max_encoder_time):
     shape = max_encoder_time-len(c)
     c.extend(shape * ["_PAD"])
+
 

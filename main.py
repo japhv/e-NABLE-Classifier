@@ -13,7 +13,7 @@ from load import load_GloVe
 
 batch_size = 1
 
-num_units = 25
+num_units = 8
 
 max_gradient_norm = 1
 
@@ -45,15 +45,14 @@ with tf.variable_scope("embedding") as scope:
     encoder_emb_inp = tf.nn.embedding_lookup(embedding_encoder, encoder_inputs)
 
     # Load the embeddings for the decoder sentence
-    decoder_inputs = tf.placeholder(tf.int32, shape=[max_decoder_time, batch_size], name="decoderInput")
-    decoder_emb_inp = tf.nn.embedding_lookup(embedding_encoder, decoder_inputs)
+    # decoder_inputs = tf.placeholder(tf.int32, shape=[max_decoder_time, batch_size], name="decoderInput")
+    # decoder_emb_inp = tf.nn.embedding_lookup(embedding_encoder, decoder_inputs)
 
-    decoder_outputs = tf.placeholder(tf.int32, name="decoderOutput")
+
 
 
 with tf.variable_scope("dense") as denseScope:
-    projection_layer = layers_core.Dense(6400, use_bias=False)
-
+    projection_layer = layers_core.Dense(6400, use_bias=False) # 6400 is a number greater than the no of unique vocabulary
 
 # Encoder
 with tf.variable_scope("encoder") as encoderScope:
@@ -65,12 +64,16 @@ with tf.variable_scope("encoder") as encoderScope:
 # Decoder
 with tf.variable_scope("decoder") as decoderScope:
     decoder_lengths = tf.placeholder(tf.int32, shape=[1])  # The sequence length -  An int32 vector tensor.
+    decoder_inputs = tf.placeholder(tf.float64, shape=(None, 1, 8), name="decoderInput")
+    decoder_outputs = tf.placeholder(tf.int32, name="decoderOutput")
 
     ## Build RNN cell
     decoder_cell = tf.nn.rnn_cell.BasicLSTMCell(num_units)
 
     ## Helper
-    helper = tf.contrib.seq2seq.TrainingHelper(decoder_emb_inp, decoder_lengths, time_major=True)
+    # helper = tf.contrib.seq2seq.TrainingHelper(decoder_emb_inp, decoder_lengths, time_major=True)
+    helper = tf.contrib.seq2seq.TrainingHelper(decoder_inputs, decoder_lengths, time_major=True)
+
 
     ## Decoder
     decoder = tf.contrib.seq2seq.BasicDecoder(decoder_cell, helper, encoder_state, output_layer=projection_layer)
@@ -107,14 +110,14 @@ with tf.Session() as sess:
         for idx, row in train.iterrows():
             enpInp = [[getWordIndex(w)] for w in row["x_term"]]  # Implement padding for numpy
             decInp = row["y_term"]
-            declen = np.array([max_decoder_time])
+            declen = np.array([8])
 
             feed_dict = {
                 encoder_inputs: enpInp,
                 decoder_inputs: decInp,
                 decoder_lengths: declen,
                 decoder_outputs: decInp,
-                target_weights: np.random.rand(1, 8)
+                target_weights: np.ones(8)
             }
             currentLoss = sess.run(train_loss,feed_dict=feed_dict)
             print(row["content"][:30], " - Loss:",currentLoss)
@@ -125,3 +128,4 @@ with tf.Session() as sess:
 
     #Test
     print("Model trained!")
+
