@@ -8,7 +8,7 @@ import tensorflow as tf
 import numpy as np
 
 from tensorflow.python.layers import core as layers_core
-from preprocess import *
+from preprocess import loadGloVe, loadData
 
 nlp = loadGloVe()
 
