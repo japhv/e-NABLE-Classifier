@@ -8,7 +8,9 @@ import tensorflow as tf
 import numpy as np
 
 from tensorflow.python.layers import core as layers_core
-from preprocess import getTrainTest
+from preprocess import *
+
+nlp = loadGloVe()
 
 batch_size = 1
 
@@ -19,9 +21,6 @@ max_gradient_norm = 1
 learning_rate = 0.02
 
 epochs = 2
-
-train, test = getTrainTest()
-
 
 with tf.variable_scope("dense") as denseScope:
     projection_layer = layers_core.Dense(6400, use_bias=False) # 6400 is a number greater than the no of unique vocabulary
@@ -60,10 +59,11 @@ with tf.variable_scope("loss") as lossScope:
 
     decoder_outputs = tf.placeholder(tf.int32, name="decoderOutput")
 
+    target_weights = tf.constant(1, shape=[8], dtype=tf.float64)
+
     # Returns a tensor with shape of decoder_outputs
     crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=decoder_outputs, logits=logits)
 
-    target_weights = tf.placeholder(tf.float64)
     train_loss = (tf.reduce_sum(crossent * target_weights) / batch_size)
 
 
@@ -84,22 +84,33 @@ with tf.Session() as sess:
 
     sess.run(tf.global_variables_initializer())
 
+    train = loadData("./data/split_data/train.csv")
+
     for _ in range(epochs):
         for idx, row in train.iterrows():
 
             if not row["content"]:
                 continue
 
-            enpInp = row["x_term"]
-            decInp = np.expand_dims(np.vstack(row["y_term"]), axis=1)
-            enpInpLen = len(row["x_term"])
+            y_term = [
+                        row["Report"],
+                        row["Device"],
+                        row["Delivery"],
+                        row["Progress"],
+                        row["becoming_member"],
+                        row["attempt_action"],
+                        row["Activity"],
+                        row["Other"]
+                    ]
+            x_term = [[token.vector] for token in nlp(row["content"])]
+            y_term = np.expand_dims(np.vstack(y_term), axis=1)
 
             feed_dict = {
-                encoder_inputs: enpInp,
-                decoder_inputs: decInp,
-                decoder_outputs: decInp,
-                target_weights: np.ones(8)
+                encoder_inputs: x_term,
+                decoder_inputs: y_term,
+                decoder_outputs: y_term
             }
+
             currentLoss = sess.run(train_loss, feed_dict=feed_dict)
 
             # Prints first 50 characters of the content with loss
@@ -111,5 +122,5 @@ with tf.Session() as sess:
                 learning_rate = 0.0001
 
     #Test
-    print("Model trained!")
+    print("\nModel trained!")
 
