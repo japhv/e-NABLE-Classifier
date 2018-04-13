@@ -39,8 +39,16 @@ def loadData():
 
 
 def __rowToVec(row):
-    outputVector = [[[row["Report"], row["Device"], row["Delivery"], row["Progress"], row["becoming_member"],
-                    row["attempt_action"], row["Activity"], row["Other"]]]]
+    outputVector = [
+                    row["Report"],
+                    row["Device"],
+                    row["Delivery"],
+                    row["Progress"],
+                    row["becoming_member"],
+                    row["attempt_action"],
+                    row["Activity"],
+                    row["Other"]
+                    ]
     return outputVector
 
 
@@ -51,13 +59,10 @@ def getTrainTest():
     :return:
     """
     df = loadData()
-    nlp = spacy.load('en')
-    max_encoder_time = 500
-    df["y_term"] = df.apply(__rowToVec, axis=1).apply(np.array)
-    print("Decoder shape:", df["y_term"][0].shape)
-    df["x_term"] = df["content"].apply(lambda c: [token.text.lower() for token in nlp(c)][:max_encoder_time])
-    # df = df[df["x_term"].map(len) < 1000] # Remove vectors which have higher dimentions
-    df["x_term"].apply(lambda c: pad(c, max_encoder_time))
+    nlp = loadGloVe()
+
+    df["y_term"] = df.apply(__rowToVec, axis=1)
+    df["x_term"] = df["content"].apply(lambda c: [[token.vector] for token in nlp(c)])
 
     # Split dataframe as a random sample with 80% train to test ratio
     train = df.sample(frac=0.8, random_state=200)
@@ -65,9 +70,5 @@ def getTrainTest():
 
     return train, test
 
-
-def pad(c, max_encoder_time):
-    shape = max_encoder_time-len(c)
-    c.extend(shape * ["_PAD"])
 
 
