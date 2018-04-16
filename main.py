@@ -50,7 +50,7 @@ with tf.variable_scope("decoder") as decoderScope:
     decoder = tf.contrib.seq2seq.BasicDecoder(decoder_cell, helper, encoder_state, output_layer=projection_layer)
 
     ## Dynamic decoding
-    outputs, _, fs = tf.contrib.seq2seq.dynamic_decode(decoder, impute_finished=True)
+    outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder, impute_finished=True)
 
     logits = outputs.rnn_output
 
@@ -92,7 +92,7 @@ with tf.Session() as sess:
             if not row["content"]:
                 continue
 
-            y_term = [
+            labels = [
                         row["Report"],
                         row["Device"],
                         row["Delivery"],
@@ -103,7 +103,7 @@ with tf.Session() as sess:
                         row["Other"]
                     ]
             x_term = [[token.vector] for token in nlp(row["content"])]
-            y_term = np.expand_dims(np.vstack(y_term), axis=1)
+            y_term = np.expand_dims(np.vstack(labels), axis=1)
 
             feed_dict = {
                 encoder_inputs: x_term,
@@ -111,16 +111,53 @@ with tf.Session() as sess:
                 decoder_outputs: y_term
             }
 
-            currentLoss = sess.run(train_loss, feed_dict=feed_dict)
+            logitsOp, currentLoss = sess.run([logits, train_loss], feed_dict=feed_dict)
 
             # Prints first 50 characters of the content with loss
             print(row["content"][:50], " - Loss:", currentLoss)
+
+            # print("Actual", labels, "\nPredicted", logitsOp)
 
             sess.run(update_step, feed_dict=feed_dict)
 
             if currentLoss < 2:
                 learning_rate = 0.0001
 
-    #Test
     print("\nModel trained!")
+
+    # # Validation
+    # validation = loadData("./data/split_data/validate.csv")
+    #
+    # accuracy = []
+    #
+    # for idx, row in validation.iterrows():
+    #
+    #     if not row["content"]:
+    #         continue
+    #
+    #     y_term = [
+    #                 row["Report"],
+    #                 row["Device"],
+    #                 row["Delivery"],
+    #                 row["Progress"],
+    #                 row["becoming_member"],
+    #                 row["attempt_action"],
+    #                 row["Activity"],
+    #                 row["Other"]
+    #             ]
+    #     x_term = [[token.vector] for token in nlp(row["content"])]
+    #     y_term = np.expand_dims(np.vstack(y_term), axis=1)
+    #
+    #     feed_dict = {
+    #         encoder_inputs: x_term,
+    #         decoder_inputs: y_term,
+    #         decoder_outputs: y_term
+    #     }
+    #
+    #     cross_ent, loss = sess.run([logits, train_loss], feed_dict=feed_dict)
+    #     print(row["content"][:50], " - Loss:", loss, np.squeeze(cross_ent))
+
+
+
+
 
