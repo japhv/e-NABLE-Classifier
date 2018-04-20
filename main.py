@@ -23,7 +23,7 @@ learning_rate = 0.02
 epochs = 2
 
 with tf.variable_scope("dense") as denseScope:
-    projection_layer = layers_core.Dense(8, activation=tf.sigmoid, use_bias=False) # 6400 is a number greater than the no of unique vocabulary
+    projection_layer = layers_core.Dense(8, activation=tf.sigmoid, use_bias=True) # 6400 is a number greater than the no of unique vocabulary
 
 # Encoder
 with tf.variable_scope("encoder") as encoderScope:
