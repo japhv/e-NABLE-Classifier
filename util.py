@@ -3,8 +3,8 @@
 """
 
 
-def normalize_predictions(predictions):
-    return [0 if x < 0.5 else 1 for x in predictions]
+def normalize_predictions(predictions, cutoff=0.5):
+    return [0 if x < cutoff else 1 for x in predictions]
 
 
 def get_precision(true_pos, false_pos):

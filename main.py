@@ -5,12 +5,10 @@
 """
 
 import tensorflow as tf
-import numpy as np
-
-import util
-
 from tensorflow.python.layers import core as layers_core
+
 from preprocess import loadGloVe, loadData
+import util
 
 nlp = loadGloVe()
 
