@@ -3,12 +3,19 @@
 
     author: Japheth Adhavan
 """
+import sys
 
 import tensorflow as tf
 from tensorflow.python.layers import core as layers_core
 
 from preprocess import loadGloVe, loadData
 import util
+
+if len(sys.argv) < 2 or sys.argv[1] not in {"train", "test"}:
+    print("Usage: python main.py [train|test]")
+    sys.exit(0)
+else:
+    is_train = sys.argv[1] == "train"
 
 nlp = loadGloVe()
 
@@ -65,10 +72,6 @@ with tf.variable_scope("loss") as lossScope:
     train_loss = tf.losses.sigmoid_cross_entropy(
         multi_class_labels=decoder_outputs,
         logits=logits,
-        weights=1.0,
-        label_smoothing=0.7,
-        scope=None,
-        loss_collection=tf.GraphKeys.LOSSES,
         reduction=tf.losses.Reduction.MEAN
     )
 
@@ -86,89 +89,98 @@ with tf.variable_scope("optimizer") as optimScope:
     update_step = optimizer.apply_gradients(zip(clipped_gradients, params))
 
 
-with tf.Session() as sess:
+# Add ops to save and restore all the variables.
+saver = tf.train.Saver()
 
-    sess.run(tf.global_variables_initializer())
 
-    train = loadData("./data/split_data/train.csv")
+def get_feed_dict(row_data):
+    labels = [
+        row_data["Report"],
+        row_data["Device"],
+        row_data["Delivery"],
+        row_data["Progress"],
+        row_data["becoming_member"],
+        row_data["attempt_action"],
+        row_data["Activity"],
+        row_data["Other"]
+    ]
+    x_term = [[token.vector] for token in nlp(row_data["content"])]
+    y_term = [[labels]]
 
-    for _ in range(epochs):
-        for idx, row in train.iterrows():
+    feed_dict = {
+        encoder_inputs: x_term,
+        decoder_inputs: y_term,
+        decoder_outputs: y_term
+    }
+
+    return feed_dict, labels
+
+
+def train_model():
+    with tf.Session() as sess:
+
+        sess.run(tf.global_variables_initializer())
+
+        train = loadData("./data/split_data/train.csv")
+
+        for _ in range(epochs):
+            for idx, row in train.iterrows():
+
+                if not row["content"]:
+                    continue
+
+                feed_dict, labels = get_feed_dict(row)
+
+                predicted, currentLoss = sess.run([logits, train_loss], feed_dict=feed_dict)
+
+                # Prints first 50 characters of the content with loss
+                print(row["content"][:50], " - Loss:", currentLoss)
+
+                sess.run(update_step, feed_dict=feed_dict)
+
+        print("\nModel trained!")
+
+        save_path = saver.save(sess, "./model_dir/model.ckpt")
+        print("Model saved in path: %s" % save_path)
+
+
+def test_model(test):
+    with tf.Session() as sess:
+
+        saver.restore(sess, "./model_dir/model.ckpt")
+        print("Model restored.")
+
+        predictions = []
+        labels = []
+
+        for idx, row in test.iterrows():
 
             if not row["content"]:
                 continue
 
-            labels = [
-                        row["Report"],
-                        row["Device"],
-                        row["Delivery"],
-                        row["Progress"],
-                        row["becoming_member"],
-                        row["attempt_action"],
-                        row["Activity"],
-                        row["Other"]
-                    ]
-            x_term = [[token.vector] for token in nlp(row["content"])]
-            y_term = [[labels]]
+            feed_dict, label = get_feed_dict(row)
 
-            feed_dict = {
-                encoder_inputs: x_term,
-                decoder_inputs: y_term,
-                decoder_outputs: y_term
-            }
+            predicted_logits = sess.run(logits, feed_dict=feed_dict)
 
-            predicted, currentLoss = sess.run([logits, train_loss], feed_dict=feed_dict)
+            predicted = util.normalize_predictions(predicted_logits[0][0])
 
-            # Prints first 50 characters of the content with loss
-            print(row["content"][:50], " - Loss:", currentLoss)
+            print(row["content"][:50], "\n","Actual:", label, "\nPredicted:", predicted, "\n")
 
-            sess.run(update_step, feed_dict=feed_dict)
+            predictions.append(predicted)
+            labels.append(label)
 
-            if currentLoss < 2:
-                learning_rate = 0.0001
+    util.print_summary(labels, predictions)
 
-    print("\nModel trained!")
 
-    # Validation
-    validation = loadData("./data/split_data/validate.csv")
+if is_train:
+    train_model()
+    cv_test = loadData("./data/split_data/validate.csv")
+    test_model(cv_test)
+else:
+    test = loadData("./data/split_data/test.csv")
+    test_model(test)
 
-    cv_predictions = []
-    cv_labels = []
 
-    for idx, row in validation.iterrows():
-
-        if not row["content"]:
-            continue
-
-        labels = [
-                    row["Report"],
-                    row["Device"],
-                    row["Delivery"],
-                    row["Progress"],
-                    row["becoming_member"],
-                    row["attempt_action"],
-                    row["Activity"],
-                    row["Other"]
-                ]
-        x_term = [[token.vector] for token in nlp(row["content"])]
-        y_term = [[labels]]
-
-        feed_dict = {
-            encoder_inputs: x_term,
-            decoder_inputs: y_term,
-            decoder_outputs: y_term
-        }
-
-        predicted_logits = sess.run(logits, feed_dict=feed_dict)
-
-        predicted = util.normalize_predictions(predicted_logits[0][0])
-
-        print(row["content"][:50], "\n","Actual:", labels, "\nPredicted:", predicted, "\n")
-
-        cv_predictions.append(predicted)
-        cv_labels.append(labels)
-
-    util.print_summary(cv_labels, cv_predictions)
 
 
 

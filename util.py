@@ -71,7 +71,3 @@ def print_summary(labels, predictions):
         print("Recall:", recall[i])
         print("F1 Score:", f1_score[i])
         print("-----------------------\n")
-
-
-
-
