@@ -28,9 +28,14 @@ conda env create -f environment.yml
 ## Running the code
 
 ```bash
+# Launch the environment
 $ source activate enable-multiclassifier-env
 
-$ python main.py
+# Train the model
+$ python main.py train
+
+# Test the model
+$ python main.py test
 ```
 
 ## Summary
