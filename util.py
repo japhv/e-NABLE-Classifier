@@ -13,9 +13,9 @@ def get_precision(true_pos, false_pos):
     return precision
 
 
-def get_recall(true_pos, true_neg):
-    true_pos_plus_true_neg = [x + y for x, y in zip(true_pos, true_neg)]
-    recall = [0 if y == 0 else x / y for x, y in zip(true_pos, true_pos_plus_true_neg)]
+def get_recall(true_pos, false_neg):
+    true_pos_plus_false_neg = [x + y for x, y in zip(true_pos, false_neg)]
+    recall = [0 if y == 0 else x / y for x, y in zip(true_pos, true_pos_plus_false_neg)]
     return recall
 
 
@@ -58,7 +58,7 @@ def print_summary(labels, predictions):
 
     precision = get_precision(true_pos, false_pos)
 
-    recall = get_recall(true_pos, true_neg)
+    recall = get_recall(true_pos, false_neg)
 
     f1_score = get_f1_score(precision, recall)
 

@@ -69,11 +69,15 @@ with tf.variable_scope("loss") as lossScope:
     target_weights = tf.constant(1, shape=[1], dtype=tf.float64)
 
     # Returns a tensor with shape of decoder_outputs
-    train_loss = tf.losses.sigmoid_cross_entropy(
-        multi_class_labels=decoder_outputs,
-        logits=logits,
-        reduction=tf.losses.Reduction.MEAN
-    )
+
+    train_loss = tf.losses.mean_squared_error(
+                labels=decoder_outputs,
+                predictions=logits,
+                weights=1.0,
+                scope=None,
+                loss_collection=tf.GraphKeys.LOSSES,
+                reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS
+            )
 
 
 # Calculate and clip gradients
