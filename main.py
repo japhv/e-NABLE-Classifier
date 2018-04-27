@@ -43,9 +43,9 @@ with tf.variable_scope("encoder") as encoderScope:
 # Decoder
 with tf.variable_scope("decoder") as decoderScope:
 
-    decoder_lengths = tf.constant(1, shape=[1])  # The sequence length -  An int32 vector tensor.
+    decoder_lengths = tf.constant(2, shape=[1])  # The sequence length -  An int32 vector tensor.
 
-    decoder_inputs = tf.placeholder(tf.float64, shape=(1, 1, 10), name="decoderInput")
+    decoder_inputs = tf.placeholder(tf.float64, shape=(2, 1, 10), name="decoderInput")
 
     ## Build RNN cell
     decoder_cell = tf.nn.rnn_cell.BasicLSTMCell(num_units)
@@ -68,8 +68,8 @@ with tf.variable_scope("loss") as lossScope:
 
     # Returns a tensor with shape of decoder_outputs
     train_loss = tf.losses.mean_squared_error(
-                labels=decoder_outputs,
-                predictions=logits,
+                labels=decoder_outputs[0],
+                predictions=logits[0],
                 weights=1.0,
                 scope=None,
                 loss_collection=tf.GraphKeys.LOSSES,
@@ -110,8 +110,8 @@ def get_feed_dict(row_data):
         0
     ]
     x_term = [[token.vector] for token in nlp(row_data["content"])]
-    y_inp_term = [[start_token]]
-    y_out_term = [[labels]]
+    y_inp_term = [[start_token], [labels]]
+    y_out_term = [[labels], [end_token]]
 
     feed_dict = {
         encoder_inputs: x_term,
@@ -170,7 +170,7 @@ def test_model(test):
 
             predicted = util.normalize_predictions(predicted_logits[0][0][1:-1])
 
-            print(row["content"][:50], "\n","Actual:", label, "\nPredicted:", predicted_logits, "\n")
+            print(row["content"][:50], "\n","Actual:", label, "\nPredicted:", predicted, "\n")
 
             predictions.append(predicted)
             labels.append(label)
