@@ -21,7 +21,7 @@ nlp = loadGloVe()
 
 batch_size = 1
 
-num_units = 8
+num_units = 10
 
 max_gradient_norm = 1
 
@@ -30,7 +30,7 @@ learning_rate = 0.02
 epochs = 2
 
 with tf.variable_scope("dense") as denseScope:
-    projection_layer = layers_core.Dense(8, activation=tf.sigmoid, use_bias=True) # 6400 is a number greater than the no of unique vocabulary
+    projection_layer = layers_core.Dense(10, activation=tf.sigmoid, use_bias=True) # 6400 is a number greater than the no of unique vocabulary
 
 # Encoder
 with tf.variable_scope("encoder") as encoderScope:
@@ -45,7 +45,7 @@ with tf.variable_scope("decoder") as decoderScope:
 
     decoder_lengths = tf.constant(1, shape=[1])  # The sequence length -  An int32 vector tensor.
 
-    decoder_inputs = tf.placeholder(tf.float64, shape=(1, 1, 8), name="decoderInput")
+    decoder_inputs = tf.placeholder(tf.float64, shape=(1, 1, 10), name="decoderInput")
 
     ## Build RNN cell
     decoder_cell = tf.nn.rnn_cell.BasicLSTMCell(num_units)
@@ -66,10 +66,7 @@ with tf.variable_scope("loss") as lossScope:
 
     decoder_outputs = tf.placeholder(tf.int32, name="decoderOutput")
 
-    target_weights = tf.constant(1, shape=[1], dtype=tf.float64)
-
     # Returns a tensor with shape of decoder_outputs
-
     train_loss = tf.losses.mean_squared_error(
                 labels=decoder_outputs,
                 predictions=logits,
@@ -98,7 +95,10 @@ saver = tf.train.Saver()
 
 
 def get_feed_dict(row_data):
+    start_token = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    end_token = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
     labels = [
+        0,
         row_data["Report"],
         row_data["Device"],
         row_data["Delivery"],
@@ -106,18 +106,20 @@ def get_feed_dict(row_data):
         row_data["becoming_member"],
         row_data["attempt_action"],
         row_data["Activity"],
-        row_data["Other"]
+        row_data["Other"],
+        0
     ]
     x_term = [[token.vector] for token in nlp(row_data["content"])]
-    y_term = [[labels]]
+    y_inp_term = [[start_token]]
+    y_out_term = [[labels]]
 
     feed_dict = {
         encoder_inputs: x_term,
-        decoder_inputs: y_term,
-        decoder_outputs: y_term
+        decoder_inputs: y_inp_term,
+        decoder_outputs: y_out_term
     }
 
-    return feed_dict, labels
+    return feed_dict, labels[1:-1]
 
 
 def train_model():
@@ -144,14 +146,14 @@ def train_model():
 
         print("\nModel trained!")
 
-        save_path = saver.save(sess, "./model_dir/model.ckpt")
+        save_path = saver.save(sess, "./model_dir/model1/model.ckpt")
         print("Model saved in path: %s" % save_path)
 
 
 def test_model(test):
     with tf.Session() as sess:
 
-        saver.restore(sess, "./model_dir/model.ckpt")
+        saver.restore(sess, "./model_dir/model1/model.ckpt")
         print("Model restored.")
 
         predictions = []
@@ -166,9 +168,9 @@ def test_model(test):
 
             predicted_logits = sess.run(logits, feed_dict=feed_dict)
 
-            predicted = util.normalize_predictions(predicted_logits[0][0])
+            predicted = util.normalize_predictions(predicted_logits[0][0][1:-1])
 
-            print(row["content"][:50], "\n","Actual:", label, "\nPredicted:", predicted, "\n")
+            print(row["content"][:50], "\n","Actual:", label, "\nPredicted:", predicted_logits, "\n")
 
             predictions.append(predicted)
             labels.append(label)
